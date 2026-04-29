@@ -26,14 +26,16 @@ Il problema consiste nel posizionare oggetti tridimensionali in uno o più conte
 
 ### Caratteristiche Principali
 - Vincoli personalizzabili e modulari
+- Precisione decimale configurabile
 - Supporto per rotazioni (90°)
 - Visualizzazione 3D interattiva (Plotly) e statica (Matplotlib)
 - Generazione automatica di batch di items
-- Calcolo statistiche di caricamento
-- Precisione decimale configurabile
-- Vincolo di centro di gravità (CoG) per bilanciamento
 - Strategia Multi-Anchor per piazzamento bilanciato
-- Test di confronto tra algoritmi
+- Calcolo statistiche di caricamento
+- Calcolo statistiche di scaricamento
+- Vincolo di centro di gravità (CoG) per bilanciamento
+- Vincolo di corridoio centrale
+- Test di confronto tra corridoio presente e non
 
 ---
 
@@ -301,6 +303,14 @@ my_constraints = [
 
 > **Nota:** Il vincolo CoG è particolarmente efficace quando combinato con la strategia `multi_anchor` (vedi sezione Packer). Con la strategia greedy pura (Left-Bottom-Back), il bias di piazzamento verso l'angolo sinistro-anteriore-basso può causare molti rifiuti e ridurre l'utilizzo dello spazio.
 
+##### `central_corridor_accessibility` (peso: 21)
+Vincolo che impone uno spazio rettangolare all'interno del vano di carico all'interno del quale vieta il posizionamento dei pacchi per permettere all'operatore di accedere alla merce.
+
+**Parametri aggiuntivi:**
+- `corridor_width_percent`: float - largezza del corridoio in relazione a quella del vano di carico (default: 0.2 = 20%)
+- `corridor_depth_percent`: float - profondità del corridoio in relazione a quella del van di carico (default: 0.85 = 85%)
+- 
+
 #### Creare vincoli personalizzati
 ```python
 from py3dbl import constraint
@@ -442,6 +452,10 @@ stats = packer.calculate_statistics()
 print(f"Utilizzo volume: {stats['average_volume']*100:.2f}%")
 ```
 
+##### `calculate_moves_v5()`
+Calcola il numero di movimentazioni da attuare per scaricare l'intero carico
+**Ritorna:** il numero di movimentazioni (int)
+
 ---
 
 ### 6. `item_generator.py` - Generazione Items
@@ -538,6 +552,9 @@ Rendering di un singolo volume (basso livello).
 
 ##### `render_item_interactive(item, fig, color, ...)`
 Rendering di un singolo item (basso livello).
+
+##### `test_slider.py`
+test con visualizzazione grafica interattiva che simula lo scarico ad ogni fermata.
 
 ---
 
@@ -806,42 +823,16 @@ packer.pack(
 ---
 
 
-## Test di Confronto
+## Test di Confronto fra corridoio presente e non
 
-Il file `test_cog_comparison.py` permette di confrontare le strategie Greedy e Multi-Anchor, con e senza vincolo di centro di gravità. I risultati vengono salvati come HTML interattivi e possono essere esportati in CSV o LaTeX.
+Il file `test_slider.py` permette di confrontare il caricamento con il corridoio o senza. i risultati del test sono esportati in file .csv ragruppati per numero di oggetti caricati. Vengono inoltre generati dei grafici in funzione della grandezza del corridoio.
 
 Esempio di esecuzione:
 ```bash
-python test_cog_comparison.py --asymmetric
+python test_slider.py [-num.items] [-corr.widht]
 ```
-
-Risultati tipici:
-
-| Strategia | Items caricati | Deviazione CoG |
-|-----------|---------------|---------------|
-| Greedy + CoG | 0/20 | — |
-| Multi-Anchor + CoG | 20/20 | < 10% |
-
-La strategia Multi-Anchor permette di rispettare il vincolo di bilanciamento senza sacrificare l'efficienza di utilizzo dello spazio.
 
 ---
-
-## API Reference
-
-### Imports Principali
-```python
-from py3dbl import (
-    Packer,              # Classe principale
-    Bin, BinModel,       # Contenitori
-    Item,                # Oggetti
-    Volume, Vector3,     # Spazio 3D
-    constraints,         # Dizionario vincoli
-    constraint,          # Decorator per vincoli custom
-    item_generator,      # Generatore items
-    render_bin_interactive,  # Visualizzazione
-    render_bin,              # Visualizzazione statica
-)
-```
 
 ### Costanti
 
