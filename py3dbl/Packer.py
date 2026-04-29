@@ -520,3 +520,74 @@ class Packer():
             statistics["average_volume"] = Decimal(0)
         
         return statistics
+
+# ============================================================================
+# Funzione di analisi: Conta per ogni pacco, secondo la sua priorità, 
+# il numero di mosse che l'operatore deve fare per poterlo estrarre.
+# ============================================================================
+
+def calculate_moves_v5(bin_obj: Bin, has_corridor: bool, CORRIDOR_WIDTH_PCT):
+    items = bin_obj.items
+    bw, bd = float(bin_obj.width), float(bin_obj.depth)
+    c_half = (bw * CORRIDOR_WIDTH_PCT) / 2
+    c_min, c_max = (bw / 2) - c_half, (bw / 2) + c_half
+    priorities = sorted(list(set(int(i.priority) for i in items)), reverse=True)
+    unloading_results = {}
+
+    def get_all_blockers(target, current_context, memo, visited):
+        if target.name in memo: return memo[target.name]
+        if target.name in visited: return set()
+        visited.add(target.name)
+        tx, ty, tz = float(target.position.x), float(target.position.y), float(target.position.z)
+        tw, th, td = float(target.width), float(target.height), float(target.depth)
+
+        top_blockers = set()
+        for other in current_context:
+            if (other.name == target.name or other.priority == target.priority): continue
+            ox, oy, oz = float(other.position.x), float(other.position.y), float(other.position.z)
+            ow, oh, od = float(other.width), float(other.height), float(other.depth)
+            if oy >= (ty + th - 0.005):
+                if not (tx + tw <= ox + 0.005 or tx >= ox + ow - 0.005 or tz + td <= oz + 0.005 or tz >= oz + od - 0.005):
+                    top_blockers.add(other.name)
+                    top_blockers.update(get_all_blockers(other, current_context, memo, visited))
+
+        rear_path = set()
+        for other in current_context:
+            if (other.name == target.name or other.priority == target.priority): continue
+            ox, oy, oz = float(other.position.x), float(other.position.y), float(other.position.z)
+            ow, oh, od = float(other.width), float(other.height), float(other.depth)
+            if oz >= (tz + td - 0.005):
+                if not (tx + tw <= ox + 0.005 or tx >= ox + ow - 0.005 or ty + th <= oy + 0.005 or ty >= oy + oh - 0.005):
+                    rear_path.add(other.name)
+                    rear_path.update(get_all_blockers(other, current_context, memo, visited))
+
+        corridor_path = set()
+        can_use_corr = False
+        if has_corridor:
+            is_left = (tx + tw/2) < (bw/2)
+            if (is_left and abs(tx + tw - c_min) < 0.03) or (not is_left and abs(tx - c_max) < 0.03): can_use_corr = True
+            else:
+                for other in current_context:
+                    if (other.name == target.name or other.priority == target.priority): continue
+                    ox, oy, oz = float(other.position.x), float(other.position.y), float(other.position.z)
+                    ow, oh, od = float(other.width), float(other.height), float(other.depth)
+                    overlap_yz = not (ty + th <= oy + 0.005 or ty >= oy + oh - 0.005 or tz + td <= oz + 0.005 or tz >= oz + od - 0.005)
+                    if is_left and (ox >= tx + tw - 0.005 and ox < c_min) and overlap_yz:
+                        corridor_path.add(other.name); corridor_path.update(get_all_blockers(other, current_context, memo, visited))
+                    elif not is_left and (ox + ow <= tx + 0.005 and ox + ow > c_max) and overlap_yz:
+                        corridor_path.add(other.name); corridor_path.update(get_all_blockers(other, current_context, memo, visited))
+                can_use_corr = True
+
+        horizontal = corridor_path if (can_use_corr and len(corridor_path) < len(rear_path)) else rear_path
+        total = top_blockers.union(horizontal)
+        memo[target.name] = total
+        visited.remove(target.name)
+        return total
+
+    for cp in priorities:
+        remaining_now = [i for i in items if int(i.priority) <= cp]
+        targets_now = [i for i in remaining_now if int(i.priority) == cp]
+        memo_at_stop = {}
+        for T in targets_now:
+            unloading_results[T.name] = len(get_all_blockers(T, remaining_now, memo_at_stop, set()))
+    return unloading_results
