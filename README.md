@@ -7,8 +7,8 @@
 3. [Architettura](#architettura)
 4. [Moduli Principali](#moduli-principali)
 5. [Esempi di Utilizzo](#esempi-di-utilizzo)
-6. [Test di Confronto](#test-di-confronto)
-7. [API Reference](#api-reference)
+6. [Test di Confronto](#test-di-confronto-fra-corridoio-presente-e-non)
+
 
 ---
 
