@@ -1,0 +1,6 @@
+# py3dbl - 3D Bin Packing Library
+# Dipendenze dirette del progetto
+
+# Visualizzazione 3D
+plotly>=5.0
+matplotlib>=3.5
